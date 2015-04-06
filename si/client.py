@@ -130,7 +130,7 @@ class SIClient (object):
                     ack.fromStruct (header_data + self.recv (header.length - len(header)))                    
                     logging.debug (ack)
 
-                    return ack
+                    #return ack
                     # if not ack.accept:
                     #     raise IOError("Camera did not accepted commands...")
 
