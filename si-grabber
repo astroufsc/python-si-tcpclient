@@ -50,7 +50,9 @@ if __name__ == "__main__":
     parser.add_option("-f", "--frame-transfer", action="store_true", dest='frametransfer', default=False,
                       help="Use frame transfer mode. See README for information about DATE headers.")    
     
-    
+    parser.add_option("-g", "--get-camera-parameters", action="store_true", dest='getpars', default=False,
+                      help="Get camera parameters and print on the screen.")
+
     (options, args) = parser.parse_args(sys.argv)
 
     if options.verbose:
@@ -64,7 +66,7 @@ if __name__ == "__main__":
     imager.nome = options.saveto
     imager.dark = options.dark
     imager.frametransfer = options.frametransfer
-
+    imager.getpars = options.getpars
     #t0 = time.time ()
 
     try:

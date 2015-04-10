@@ -22,6 +22,8 @@ class Imager (object):
         self.type = None
         self.dark = None
         self.frametransfer = None
+        self.getpars = None
+
 
         # private
         self._term = False
@@ -35,7 +37,7 @@ class Imager (object):
         else:
             self.client.executeCommand (SetAcquisitionType (0)) # LIGHT, BUFFER 1
 
-        self.client.executeCommand (SetExposureTime(self.texp))
+        self.client.executeCommand (SetExposureTime(float(self.texp)))
 
         for i in range(self.nexp):
 
@@ -130,10 +132,30 @@ class Imager (object):
 
     def do (self):
 
-        if self.frametransfer:
+        if self.getpars:
+            print self.getCameraPars()
+        elif self.frametransfer:
             return self.doFrameTransfer ()
         else:
             return self.doSingleFrame ()
+
+    def getCameraPars(self):
+
+        #cpars = '%s'%self.client.executeCommand(GetSIImageSGLIISettings())
+
+        #cpars =  self.client.executeCommand(GetStatusFromCamera())
+
+        cpars = self.client.executeCommand(GetCameraParameter())
+
+        from StringIO import StringIO
+
+        xcpars = StringIO()
+        xcpars.write('%s'%cpars)
+        xcpars.seek(0)
+        a = np.loadtxt(xcpars,delimiter=',',dtype=[('group','S30'),('name','S30'),('value','int') ])
+        print '->',a
+
+        return cpars
 
     def interrupt (self):
 

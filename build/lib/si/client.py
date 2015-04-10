@@ -8,6 +8,8 @@ import select
 import time
 import numpy as np
 import os
+import time
+
 import logging
 
 #import array
@@ -15,6 +17,16 @@ import logging
 from si.packet import Packet
 from si.packets import *
 from si.commands import *
+
+class AckException(Exception):
+    '''
+    Raise when acknowledge is not accepted by the serve.
+    '''
+
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
 
 class SIClient (object):
     """SIClient.
@@ -57,6 +69,9 @@ class SIClient (object):
         ask socket for n bytes and make sure that the return value contain exactly this amount of bytes.
         """
 
+        if len(self.buff) > 0:
+            logging.warning("Buffer not empty...")
+
         # if buffer isn't empty, return it and clear it
         bytes_to_receive = n - len(self.buff)
 
@@ -64,6 +79,8 @@ class SIClient (object):
         self.buff = ""
 
         retries = 0
+
+        logging.debug("bytes to receive %d (received %d)"%(bytes_to_receive,len(bytes_received)))
 
         while bytes_to_receive > 0:
 
@@ -122,15 +139,19 @@ class SIClient (object):
             if ret[0][0] == self.sk:
 
                 header = Packet ()
-                header_data = self.sk.recv (len(header))
+                header_data = self.recv (len(header))
                 header.fromStruct (header_data)
 
                 if header.id == 129:
                     ack = Ack ()                  
                     ack.fromStruct (header_data + self.recv (header.length - len(header)))                    
                     logging.debug (ack)
+                    # TODO: Figure out why do I need this sleep here. If I don't do this, some commands are not
+                    # TODO: performed. I really don't know why!
+                    time.sleep(0.1)
+                    #return ack
                     if not ack.accept:
-                        raise IOError("Camera did not accepted commands...")
+                         raise AckException("Camera did not accepted command...")
 
                 if header.id == 131:
                     data = cmd.result ()
@@ -140,7 +161,8 @@ class SIClient (object):
 
                     if data.data_type == 2006: # image header
                         return data.header
-
+                    if data.data_type == 2010: # camera parameter structure
+                        return data
                     break
 
                 if header.id == 132:
@@ -158,7 +180,8 @@ class SIClient (object):
                    
                     for i in range (packets):
 
-                        img.fromStruct (self.sk.recv (len(img)))
+                        data = self.recv (len(img))
+                        img.fromStruct (data)
                         #logging.debug (img)
                         data = self.recv(img.img_bytes)
                         tmp_array = np.append(tmp_array,np.fromstring(data,np.uint16))

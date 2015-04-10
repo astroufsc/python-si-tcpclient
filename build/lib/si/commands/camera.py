@@ -8,8 +8,11 @@ import select
 import time
 import array
 import os
+import numpy as np
 
 from si.packets import *
+
+########################################################################################################################
 
 class CameraCommand (object):
     """CameraCommand.
@@ -29,6 +32,7 @@ class CameraCommand (object):
     def result (self, struct):
         pass
 
+########################################################################################################################
 
 class GetStatusFromCamera (CameraCommand):
 
@@ -46,36 +50,39 @@ class GetStatusFromCamera (CameraCommand):
 
         return Status ()
 
-'''
-class DirectAcquire (CameraCommand):
-
-    def __init__ (self, texp, mode, buff, img_type, name):
-        CameraCommand.__init__ (self)
-
-        self.texp = texp
-        self.mode = mode
-        self.buff = buff
-        self.img_type = img_type
-        self.name = name
-
-    def command (self):
-
-        cmd = Command ()
-        cmd.func_number = 1012
-
-        cmd.addParam (">I", self.texp) # exposure time
-        cmd.addParam (">H", self.mode) # mode (1-4)
-        cmd.addParam (">H", self.buff) # buffer number (1-2)
-        cmd.addParam (">H", self.img_type) # save as (0-7)
-        cmd.addParam (">%ds" % len(self.name), self.name) # name
-
-        return cmd
-
-    def result (self):
-
-        return Image ()     
-
-'''
+########################################################################################################################
+#
+# DEPRECATED COMMAND
+#
+# class DirectAcquire (CameraCommand):
+#
+#     def __init__ (self, texp, mode, buff, img_type, name):
+#         CameraCommand.__init__ (self)
+#
+#         self.texp = texp
+#         self.mode = mode
+#         self.buff = buff
+#         self.img_type = img_type
+#         self.name = name
+#
+#     def command (self):
+#
+#         cmd = Command ()
+#         cmd.func_number = 1012
+#
+#         cmd.addParam (">I", self.texp) # exposure time
+#         cmd.addParam (">H", self.mode) # mode (1-4)
+#         cmd.addParam (">H", self.buff) # buffer number (1-2)
+#         cmd.addParam (">H", self.img_type) # save as (0-7)
+#         cmd.addParam (">%ds" % len(self.name), self.name) # name
+#
+#         return cmd
+#
+#     def result (self):
+#
+#         return Image ()
+#
+########################################################################################################################
 
 class SetAcquisitionMode (CameraCommand):
 
@@ -95,24 +102,28 @@ class SetAcquisitionMode (CameraCommand):
     def result (self):
         return Done ()
 
+########################################################################################################################
+
 class SetExposureTime (CameraCommand):
 
     def __init__ (self, exp_time):
         CameraCommand.__init__ (self)
 
-        self.exp_time = exp_time
+        self.exp_time = float(exp_time)
 
     def command (self):
         cmd = Command ()
         cmd.func_number = 1035
 
-        cmd.addParam (">d", self.exp_time) # exposure time as a double in seconds
+        cmd.addParam (">d", float(self.exp_time)) # exposure time as a double in seconds
 
 
         return cmd
 
     def result (self):
         return Done ()
+
+########################################################################################################################
 
 class SetAcquisitionType (CameraCommand):
 
@@ -132,6 +143,8 @@ class SetAcquisitionType (CameraCommand):
     def result (self):
         return Done ()
 
+########################################################################################################################
+
 class Acquire (CameraCommand):
 
     def __init__ (self):
@@ -147,6 +160,8 @@ class Acquire (CameraCommand):
     def result (self):
 
         return Done ()
+
+########################################################################################################################
 
 class SetMultipleFrameBufferMode (CameraCommand):
 
@@ -166,6 +181,7 @@ class SetMultipleFrameBufferMode (CameraCommand):
     def result (self):
         return Done ()
  
+########################################################################################################################
 
 class SetNumberOfFrames (CameraCommand):
 
@@ -184,7 +200,9 @@ class SetNumberOfFrames (CameraCommand):
 
     def result (self):
         return Done ()
- 
+
+########################################################################################################################
+
 class TerminateAcquisition (CameraCommand):
 
     def __init__ (self):
@@ -198,6 +216,8 @@ class TerminateAcquisition (CameraCommand):
 
     def result (self):
         return Done ()
+
+########################################################################################################################
 
 class RetrieveImage (CameraCommand):
 
@@ -217,6 +237,8 @@ class RetrieveImage (CameraCommand):
     def result (self):
         return Image ()
 
+########################################################################################################################
+
 class GetImageHeader (CameraCommand):
 
     def __init__ (self, buff):
@@ -235,6 +257,8 @@ class GetImageHeader (CameraCommand):
     def result (self):
         return ImageHeader ()
 
+########################################################################################################################
+
 class InquireAcquisitionStatus (CameraCommand):
 
     def __init__ (self):
@@ -249,6 +273,8 @@ class InquireAcquisitionStatus (CameraCommand):
     def result (self):
         return AcquisitionStatus ()
 
+########################################################################################################################
+
 class SetReadoutMode(CameraCommand):
 
     def __init__(self,rom):
@@ -260,6 +286,11 @@ class SetReadoutMode(CameraCommand):
         cmd.func_number = 1042
 
         cmd.addParam(">B",self.rom)
+
+    def result(self):
+        return Done ()
+
+########################################################################################################################
 
 class SetCCDFormatParameters(CameraCommand):
 
@@ -284,6 +315,10 @@ class SetCCDFormatParameters(CameraCommand):
         cmd.addParam(">i",self.ParallelLength)
         cmd.addParam(">i",self.ParallelBinning)
 
+    def result(self):
+        return Done ()
+
+########################################################################################################################
 
 class SetCooler(CameraCommand):
 
@@ -295,7 +330,14 @@ class SetCooler(CameraCommand):
         cmd = Command()
         cmd.func_number = 1046
 
-        cmd.addParam(">B",self.state)
+        cmd.addParam(">B",self.state) # 0 = off, 1 = on
+
+        return cmd
+
+    def result(self):
+        return Done ()
+
+########################################################################################################################
 
 class SetSaveToFolderPath(CameraCommand):
 
@@ -309,6 +351,11 @@ class SetSaveToFolderPath(CameraCommand):
 
         cmd.addParam (">%ds" % len(self.path), self.path) # Path
 
+    def result(self):
+        return Done ()
+
+########################################################################################################################
+
 class GetCameraParameter(CameraCommand):
 
     def __init__(self):
@@ -317,6 +364,29 @@ class GetCameraParameter(CameraCommand):
     def command(self):
         cmd = Command()
         cmd.func_number = 1048
+
+        return cmd
+
+    def result(self):
+        return CameraParameterStructure()
+
+########################################################################################################################
+
+class GetSIImageSGLIISettings(CameraCommand):
+
+    def __init__(self):
+        CameraCommand.__init__ (self)
+
+    def command(self):
+        cmd = Command()
+        cmd.func_number = 1041
+
+        return cmd
+
+    def result(self):
+        return SIImageSGLIISettings ()
+
+########################################################################################################################
 
 class GetCameraXMLFile(CameraCommand):
 
@@ -331,6 +401,11 @@ class GetCameraXMLFile(CameraCommand):
 
         cmd.addParam(">%ds"%len(self.xmlfile),self.xmlfile)
 
+    def result(self):
+        return Done ()
+
+########################################################################################################################
+
 class GetImageAcquisitionTypes(CameraCommand):
 
     def __init__(self):
@@ -339,6 +414,11 @@ class GetImageAcquisitionTypes(CameraCommand):
     def command(self):
         cmd = Command()
         cmd.func_number = 1061
+
+    def result(self):
+        return Done ()
+
+########################################################################################################################
 
 class SetContinuousClearMode(CameraCommand):
 
@@ -353,6 +433,11 @@ class SetContinuousClearMode(CameraCommand):
 
         cmd.addParam('>B',self.mode)
 
+    def result(self):
+        return Done ()
+
+########################################################################################################################
+
 class ResetCamera(CameraCommand):
 
     def __init__(self):
@@ -362,6 +447,11 @@ class ResetCamera(CameraCommand):
         cmd = Command()
         cmd.func_number = 1063
 
+    def result(self):
+        return Done ()
+
+########################################################################################################################
+
 class HardwareCameraReset(CameraCommand):
 
     def __init__(self):
@@ -370,3 +460,8 @@ class HardwareCameraReset(CameraCommand):
     def command(self):
         cmd = Command()
         cmd.func_number = 1064
+
+    def result(self):
+        return Done ()
+
+########################################################################################################################

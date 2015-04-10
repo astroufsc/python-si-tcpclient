@@ -8,6 +8,7 @@ import select
 import time
 import array
 import os
+import numpy as np
 
 from si.packets import *
 
@@ -108,13 +109,13 @@ class SetExposureTime (CameraCommand):
     def __init__ (self, exp_time):
         CameraCommand.__init__ (self)
 
-        self.exp_time = exp_time
+        self.exp_time = float(exp_time)
 
     def command (self):
         cmd = Command ()
         cmd.func_number = 1035
 
-        cmd.addParam (">d", self.exp_time) # exposure time as a double in seconds
+        cmd.addParam (">d", float(self.exp_time)) # exposure time as a double in seconds
 
 
         return cmd

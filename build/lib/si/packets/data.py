@@ -6,6 +6,7 @@ import struct
 
 from si.packet import Packet
 
+
 class Data (Packet):
     """Data.
 
@@ -31,32 +32,31 @@ class Status (Data):
         Data.__init__ (self)
 
         # public
-        self.ccd_temp = None
-        self.backplate_temp = None
-        self.chamber_pressure = None
-        self.shutter_status = None
-        self.xirq_status = None
+        # self.ccd_temp = None
+        # self.backplate_temp = None
+        # self.chamber_pressure = None
+        # self.shutter_status = None
+        # self.xirq_status = None
+
+        self.statuslist = None
 
         # private
-        self._fmt = self._fmt + "16I"
+        # self._fmt = self._fmt + "16I"
         self.length = struct.calcsize (self._fmt)
 
     def fromStruct (self, data):
 
-        result = struct.unpack (self._fmt, data)
+        results = struct.unpack (self._fmt, data[:16])
 
-        self.length = result[0]
-        self.id = result[1]
-        self.cam_id =result[2]
-        self.err_code = result[3]
-        self.data_type = result[4]
-        self.byte_length = result[5]
-        
-        self.ccd_temp = result[6]
-        self.backplate_temp = result[7]
-        self.chamber_pressure = result[8]
-        self.shutter_status = result[14]
-        self.xirq_status = result[15]
+        self.length = results[0]
+        self.id = results[1]
+        self.cam_id =results[2]
+        self.err_code = results[3]
+        self.data_type = results[4]
+        self.byte_length = results[5]
+
+        # header without NULL byte
+        self.statuslist = struct.unpack (">%ds" % (self.length - 16), data[16:])[0][:-1]
 
         return True
 
@@ -65,12 +65,7 @@ class Status (Data):
 
     def __str__ (self):
 
-        return "<data packet (status 2002)>\nlength=%d\ncam_id=%d\n" \
-               "ccd_temperature=%d\nbackplate_temperature=%d\n" \
-                "chamber_pressure=%d\nshutter_status=%d\nxirq_status=%d\n" % (len(self), self.cam_id,
-                                                                            self.ccd_temp, self.backplate_temp,
-                                                                            self.chamber_pressure, self.shutter_status,
-                                                                            self.xirq_status)
+        return "<data packet (status 2002)>\n%s\n" % (self.statuslist)
 
 class Done (Data):
 
@@ -142,7 +137,80 @@ class ImageHeader (Data):
     def __str__ (self):
         return "<image_header packet>\nlength=%d\nerr_code=%d\n" % (len(self), self.err_code)
 
-        
+
+class SIImageSGLIISettings (Data):
+
+    def __init__(self):
+        Data.__init__(self)
+
+        self._fmt += 'IBBIIHHIIIIII'
+
+    def fromStruct(self, data):
+
+        result = struct.unpack(self._fmt,data)[6:]
+
+        # public
+        self.exptime = result[0] # U32 Exposure time in ms
+        self.number_of_readout_modes = result[1] # U8 Number of Readout Modes defined for the camera
+        self.readout_mode_number = result[2] # U8 Current Readout Mode
+        self.average_n_images = result[3] # U32 Number of Images to Acquire and Average
+        self.frames = result[4] # U32 Number of Frames to Acquire
+        self.acquisition_mode = result[5] # U16 SI Image SGL II Acquisition Mode (see 5.3.7)
+        self.acquisition_type  = result[6] # U16 SI Image SGL II Acquisition Type (see 1.1.1)
+        self.serial_origin  = result[7] # I32 CCD Format Serial Origin
+        self.serial_length = result[8] #?I32 CCD Format Serial Length
+        self.serial_binning = result[9] # I32 CCD Format Serial Binning
+        self.parallel_origin = result[10] # I32 CCD Format Parallel Origin
+        self.parallel_length = result[11] # I32 CCD Format Parallel Length
+        self.parallel_binning = 1 #result[12] # I32 CCD Format Parallel Binning
+
+    def __str__(self):
+        return '''<si_image_settings> exptime=%i
+number_of_readout_modes=%i
+read_out_mode=%i
+serial_origin=%i
+serial_length=%i
+serial_binning=%i
+parallel_origin=%i
+parallel_length=%i
+parallel_binning=%i'''%(self.exptime,
+                        self.number_of_readout_modes,
+                        self.readout_mode_number,
+                        self.serial_origin,
+                        self.serial_length,
+                        self.serial_binning,
+                        self.parallel_origin,
+                        self.parallel_length,
+                        self.parallel_binning)
+
+class CameraParameterStructure(Data):
+
+    def __init__(self):
+        Data.__init__(self)
+
+        self.parameterlist = None
+
+    def fromStruct(self, data):
+
+        results = struct.unpack (self._fmt, data[:16])
+
+        self.length = results[0]
+        self.id = results[1]
+        self.cam_id =results[2]
+        self.err_code = results[3]
+        self.data_type = results[4]
+        self.byte_length = results[5]
+
+        # header without NULL byte
+        self.parameterlist = struct.unpack (">%ds" % (self.length - 16), data[16:])[0][:-1]
+
+        return True
+
+    def __str__ (self):
+        return self.parameterlist
+        #return "<camera_parameter_structure packet>\nlength=%d\nerr_code=%d\n" % (len(self), self.err_code)
+
+
 class AcquisitionStatus (Data):
 
     def __init__ (self):
