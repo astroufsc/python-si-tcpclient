@@ -45,8 +45,7 @@ class Status(Data):
         self.byte_length = results[5]
 
         # header without NULL byte
-        self.statuslist = struct.unpack(
-            ">%ds" % (self.length - 16), data[16:])[0][:-1]
+        self.statuslist = struct.unpack(">%ds" % (self.length - 16), data[16:])[0][:-1]
 
         return True
 
@@ -87,7 +86,7 @@ class Done(Data):
 
     def __str__(self):
         return "<done packet>\nlength=%d\nerr_code=%d\nfunc_number=%d\n" % (
-        len(self), self.err_code, self.func_number)
+            len(self), self.err_code, self.func_number)
 
 
 class ImageHeader(Data):
@@ -122,11 +121,10 @@ class ImageHeader(Data):
 
     def __str__(self):
         return "<image_header packet>\nlength=%d\nerr_code=%d\n" % (
-        len(self), self.err_code)
+            len(self), self.err_code)
 
 
 class Sgl2Structure(Data):
-
     def __init__(self):
         Data.__init__(self)
 
@@ -136,7 +134,16 @@ class Sgl2Structure(Data):
         self.sgl2settingslist = None
 
     def fromStruct(self, data):
-        result = struct.unpack(self._fmt, data)[6:]
+        result = struct.unpack(self._fmt, data)
+
+        self.length = result[0]
+        self.id = result[1]
+        self.cam_id = result[2]
+        self.err_code = result[3]
+        self.data_type = result[4]
+        self.byte_length = result[5]
+
+        result = result[6:]
 
         # public
         self.exptime = result[0]  # U32 Exposure time in ms
@@ -152,26 +159,6 @@ class Sgl2Structure(Data):
         self.parallel_origin = result[10]  # I32 CCD Format Parallel Origin
         self.parallel_length = result[11]  # I32 CCD Format Parallel Length
         self.parallel_binning = result[12]  # I32 CCD Format Parallel Binning
-
-        # self.sgl2settingslist = str("exptime={0:d}\n"
-        #                         "number_of_readout_modes={1:d}\n"
-        #                         "read_out_mode={2:d}\n"
-        #                         "serial_origin={3:d}\n"
-        #                         "serial_length={4:d}\n"
-        #                         "serial_binning={5:d}\n"
-        #                         "parallel_origin={6:d}\n"
-        #                         "parallel_length={7:d}\n"
-        #                         "parallel_binning={8:d}"
-        #                         .format(self.exptime,
-        #                                 self.number_of_readout_modes,
-        #                                 self.readout_mode_number,
-        #                                 self.serial_origin,
-        #                                 self.serial_length,
-        #                                 self.serial_binning,
-        #                                 self.parallel_origin,
-        #                                 self.parallel_length,
-        #                                 self.parallel_binning))
-        self.sgl2settingslist = copy.copy(result)
 
         return True
 
@@ -195,6 +182,7 @@ class Sgl2Structure(Data):
                          self.parallel_origin, self.parallel_length,
                          self.parallel_binning)
 
+
 class CameraParameterStructure(Data):
     def __init__(self):
         Data.__init__(self)
@@ -213,15 +201,12 @@ class CameraParameterStructure(Data):
         self.byte_length = results[5]
 
         # header without NULL byte
-        self.parameterlist = \
-        struct.unpack('>%ds' % (self.length - 16), data[16:])[0][:-1]
+        self.parameterlist = struct.unpack('>%ds' % (self.length - 16), data[16:])[0][:-1]
 
         return True
 
     def __str__(self):
         return self.parameterlist
-        # return "<camera_parameter_structure
-        # packet>\nlength=%d\nerr_code=%d\n" % (len(self), self.err_code)
 
 
 class AcquisitionStatus(Data):
@@ -232,9 +217,10 @@ class AcquisitionStatus(Data):
         self.exp_done_percent = None
         self.readout_done_percent = None
         self.relative_readout_position = None
+        self.acquiring = None
 
         # private
-        self._fmt += "HHI"
+        self._fmt += "HHIi"
         self.length = struct.calcsize(self._fmt)
 
     def fromStruct(self, data):
@@ -250,6 +236,7 @@ class AcquisitionStatus(Data):
         self.exp_done_percent = results[6]
         self.readout_done_percent = results[7]
         self.relative_readout_position = results[8]
+        self.acquiring = results[9]
 
         return True
 
@@ -265,7 +252,31 @@ class AcquisitionStatus(Data):
 
 
 class XMLFileStructure(Data):
-    pass
+    def __init__(self):
+        Data.__init__(self)
+
+        self.length = struct.calcsize(self._fmt)
+
+    def fromStruct(self, data):
+        result = struct.unpack(self._fmt, data[:16])
+
+        self.length = result[0]
+        self.id = result[1]
+        self.cam_id = result[2]
+        self.err_code = result[3]
+        self.data_type = result[4]
+        self.byte_length = result[5]
+
+        self.fileslist = struct.unpack(
+            '>%ds' % (self.length - 16), data[16:])[0][:-1]
+
+        return True
+
+    def __len__(self):
+        return self.length
+
+    def __str__(self):
+        return self.fileslist
 
 
 class MenuInfoStructure(Data):
@@ -285,10 +296,9 @@ class MenuInfoStructure(Data):
         self.data_type = result[4]
         self.byte_length = result[5]
 
-        self.menuinfolist = struct.unpack(
-            '>%ds' % (self.length - 16), data[16:])[0][:-1]
+        print("MenuInfoStructure: {}".format(self.data_type))
 
-        raw_input("We are {}".format(self.menuinfolist))
+        self.menuinfolist = struct.unpack('>%ds' % (self.length - 16), data[16:])[0][:-1]
 
         return True
 

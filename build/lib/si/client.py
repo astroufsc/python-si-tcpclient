@@ -130,10 +130,10 @@ class SIClient (object):
                 raise e
 
         cmd_to_send = cmd.command()
-        logging.debug(cmd_to_send)
+        logging.debug("cmd is: {}".format(cmd_to_send))
 
         bytes_sent = self.sk.send(cmd_to_send.toStruct())
-        # logging.debug("%d bytes sent" % bytes_sent)
+        logging.debug("%d bytes sent" % bytes_sent)
 
         while True:
 
@@ -153,7 +153,7 @@ class SIClient (object):
                     ack.fromStruct(
                         header_data + self.recv(header.length - len(header)))
                     logging.debug(ack)
-                    # TODO: Figure out why do I need this sleep here. If I don't do this, some commands are not
+                    # TODO: Figure out why do I need this sleep here. If Idon't do this, some commands are not
                     # TODO: performed. I really don't know why!
                     time.sleep(0.1)
                     # return ack
@@ -166,17 +166,22 @@ class SIClient (object):
                     data.fromStruct(
                         header_data + self.recv(header.length - len(header)))
                     #data.fromStruct (header_data + self.recv (header.length))
-                    logging.debug(data)
-
+                    # logging.debug(data)
+                    logging.debug("data type is {}".format(data.data_type))
                     if data.data_type == 2006:  # image header
                         return data.header
-                    if data.data_type == 2008:  # SGLII settings structure
-                        return data.result
-                    if data.data_type == 2010:  # camera parameter structure
+                    elif data.data_type == 2004:  # acquisition status structure
                         return data
-                    if data.data_type == 2012:  # camera status structure
+                    elif data.data_type == 2008:  # SGLII settings structure
                         return data
-                    if data.data_type == 2013:  # menu information structure
+                    elif data.data_type == 2010:  # camera parameter structure
+                        return data
+                    elif data.data_type == 2011:  # camera XML file structure
+                        return data
+                    elif data.data_type == 2012:  # camera status structure
+                        return data
+                    elif data.data_type == 2013:  # menu information structure
+                        print(data.data_type)
                         return data
                     break
 

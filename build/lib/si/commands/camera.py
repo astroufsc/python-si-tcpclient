@@ -335,7 +335,6 @@ class GetSIImageSGLIISettings(CameraCommand):
     def command(self):
         cmd = si.packets.Command()
         cmd.func_number = 1041
-        # raw_input("{}:cmd is {}. Next?:".format(self.__module__, cmd))
         return cmd
 
     def result(self):
@@ -348,14 +347,17 @@ class GetCameraXMLFile(CameraCommand):
 
         self.xmlfile = xmlfile
 
+
     def command(self):
         cmd = si.packets.Command()
         cmd.func_number = 1060
 
         cmd.addParam(">%ds" % len(self.xmlfile), self.xmlfile)
 
+        return cmd
+
     def result(self):
-        return si.packets.Done()
+        return si.packets.XMLFileStructure()
 
 
 class GetImageAcquisitionTypes(CameraCommand):
@@ -411,6 +413,8 @@ class GetAcquisitionModes(CameraCommand):
     def command(self):
         cmd = si.packets.Command()
         cmd.func_number = 1066
+
+        return cmd
 
     def result(self):
         return si.packets.MenuInfoStructure()
