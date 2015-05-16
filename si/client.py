@@ -181,7 +181,7 @@ class SIClient (object):
                     elif data.data_type == 2012:  # camera status structure
                         return data
                     elif data.data_type == 2013:  # menu information structure
-                        print(data.data_type)
+                        # print(data.data_type)
                         return data
                     break
 
