@@ -190,6 +190,20 @@ class RetrieveImage(CameraCommand):
         return si.packets.Image()
 
 
+class TerminateImageRetrieve(CameraCommand):
+    def __init__(self):
+        CameraCommand.__init__(self)
+
+    def command(self):
+        cmd = si.packets.Command()
+        cmd.func_number = 1020
+
+        return cmd
+
+    def result(self):
+        return si.packets.Done()
+
+
 class GetImageHeader(CameraCommand):
     def __init__(self, buff):
         CameraCommand.__init__(self)
@@ -346,7 +360,6 @@ class GetCameraXMLFile(CameraCommand):
         CameraCommand.__init__(self)
 
         self.xmlfile = xmlfile
-
 
     def command(self):
         cmd = si.packets.Command()
