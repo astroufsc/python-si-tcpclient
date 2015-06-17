@@ -46,6 +46,44 @@ class GetStatusFromCamera(CameraCommand):
         return si.packets.Status()
 
 
+class SaveImage(CameraCommand):
+    def __init__(self, filename, saveAs = 'U16 FITS'):
+        CameraCommand.__init__(self)
+
+        self.saveAsOptions = {'U16': 0,
+                              'I16': 1,
+                              'I32': 2,
+                              'SGL': 3,
+                              'U16 FITS': 0,
+                              'I16 FITS': 1,
+                              'I32 FITS': 2,
+                              'SGL FITS': 3,
+                              'U16 TIFF': 4,
+                              'I16 TIFF': 5,
+                              'I32 TIFF': 6,
+                              'SGL TIFF': 7}
+        self.saveAs = 0
+        self.saveAsStr = 'U16 FITS'
+        try:
+            self.saveAs = self.saveAsOptions[saveAs]
+            self.saveAsStr = saveAs
+        except:
+            self.saveAs = 0
+            self.saveAsStr = 'U16 FITS'
+        self.filename = filename
+
+    def command(self):
+        cmd = si.packets.Command()
+        cmd.func_number = 1031
+
+        cmd.addParam(">H", self.saveAs)
+        cmd.addParam(">%ds" % (len(self.filename)+1), self.filename)
+
+        return cmd
+
+    def result(self):
+        return si.packets.Done()
+
 class SetAcquisitionMode(CameraCommand):
     def __init__(self, mode):
         CameraCommand.__init__(self)
@@ -305,6 +343,8 @@ class SetSaveToFolderPath(CameraCommand):
         cmd.func_number = 1047
 
         cmd.addParam(">%ds" % len(self.path), self.path)  # Path
+
+        return cmd
 
     def result(self):
         return si.packets.Done()

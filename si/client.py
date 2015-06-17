@@ -159,7 +159,7 @@ class SIClient (object):
                     # return ack
                     if not ack.accept:
                         raise AckException(
-                            "Camera did not accept command...")
+                            "Camera did not accepted command...")
 
                 if header.id == 131:  # incoming data pkt
                     data = cmd.result()  # data structure as defined in data.py
@@ -171,6 +171,8 @@ class SIClient (object):
                     if data.data_type == 2006:  # image header
                         return data.header
                     elif data.data_type == 2004:  # acquisition status structure
+                        return data
+                    elif data.data_type == 2007:  # command done structure
                         return data
                     elif data.data_type == 2008:  # SGLII settings structure
                         return data
@@ -204,7 +206,7 @@ class SIClient (object):
 
                         data = self.recv(len(img))
                         img.fromStruct(data)
-                        #logging.debug (img)
+                        logging.debug (img)
                         data = self.recv(img.img_bytes)
                         tmp_array = np.append(
                             tmp_array, np.fromstring(data, np.uint16))
