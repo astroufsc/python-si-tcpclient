@@ -16,6 +16,7 @@ import logging
 from si.packets import *
 from si.commands import *
 
+log = logging.getLogger(__name__)
 
 class AckException(Exception):
 
@@ -73,7 +74,7 @@ class SIClient (object):
         """
 
         if len(self.buff) > 0:
-            logging.warning("Buffer not empty...")
+            log.warning("Buffer not empty...")
 
         # if buffer isn't empty, return it and clear it
         bytes_to_receive = n - len(self.buff)
@@ -83,15 +84,15 @@ class SIClient (object):
 
         retries = 0
 
-        # logging.debug("bytes to receive %d (received %d)" %
+        # log.debug("bytes to receive %d (received %d)" %
         #               (bytes_to_receive, len(bytes_received)))
 
         while bytes_to_receive > 0:
 
-            # logging.debug("bytes to receive %d" % bytes_to_receive)
+            # log.debug("bytes to receive %d" % bytes_to_receive)
             this_try = self.sk.recv(bytes_to_receive)
 
-            # logging.debug("bytes received on this try %d" % len(this_try))
+            # log.debug("bytes received on this try %d" % len(this_try))
             bytes_to_receive -= len(this_try)
 
             bytes_received += this_try
@@ -104,11 +105,11 @@ class SIClient (object):
             # on a buffer
             self.buff = bytes_received[n:]
             ret = bytes_received[:n]
-            logging.debug("buffer overrrun")
+            log.debug("buffer overrrun")
         else:
             ret = bytes_received
 
-        # logging.debug("> framing retries %d (return length %d)" %
+        # log.debug("> framing retries %d (return length %d)" %
         #               (retries, len(ret)))
 
         return ret
@@ -130,10 +131,10 @@ class SIClient (object):
                 raise e
 
         cmd_to_send = cmd.command()
-        logging.debug("cmd is: {}".format(cmd_to_send))
+        log.debug("cmd is: {}".format(cmd_to_send))
 
         bytes_sent = self.sk.send(cmd_to_send.toStruct())
-        logging.debug("%d bytes sent" % bytes_sent)
+        log.debug("%d bytes sent" % bytes_sent)
 
         while True:
 
@@ -152,7 +153,7 @@ class SIClient (object):
                     ack = Ack()
                     ack.fromStruct(
                         header_data + self.recv(header.length - len(header)))
-                    logging.debug(ack)
+                    log.debug(ack)
                     # TODO: Figure out why do I need this sleep here. If Idon't do this, some commands are not
                     # TODO: performed. I really don't know why!
                     time.sleep(0.1)
@@ -166,8 +167,8 @@ class SIClient (object):
                     data.fromStruct(
                         header_data + self.recv(header.length - len(header)))
                     #data.fromStruct (header_data + self.recv (header.length))
-                    # logging.debug(data)
-                    logging.debug("data type is {}".format(data.data_type))
+                    # log.debug(data)
+                    log.debug("data type is {}".format(data.data_type))
                     if data.data_type == 2006:  # image header
                         return data.header
                     elif data.data_type == 2004:  # acquisition status structure
@@ -198,7 +199,7 @@ class SIClient (object):
                     # TODO: Needs better mapping of types here!
                     tmp_array = np.fromstring(
                         self.recv(img.img_bytes), np.uint16)
-                    logging.debug(img)
+                    log.debug(img)
 
                     packets = img.total_packets - 1
 
@@ -206,7 +207,7 @@ class SIClient (object):
 
                         data = self.recv(len(img))
                         img.fromStruct(data)
-                        logging.debug (img)
+                        log.debug (img)
                         data = self.recv(img.img_bytes)
                         tmp_array = np.append(
                             tmp_array, np.fromstring(data, np.uint16))
