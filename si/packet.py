@@ -50,6 +50,6 @@ class Packet(object):
 
     def fmt(self):
         return self._fmt
-    
+
     def __len__(self):
-        return struct.calcsize(self._fmt)
+        return struct.calcsize(self.fmt())
