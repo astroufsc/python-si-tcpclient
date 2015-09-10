@@ -40,7 +40,7 @@ class Packet(object):
         self._fmt = ">IBB"
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data)
+        results = struct.unpack(self.fmt(), data)
 
         self.length = results[0]
         self.id = results[1]
@@ -48,5 +48,8 @@ class Packet(object):
 
         return True
 
+    def fmt(self):
+        return self._fmt
+    
     def __len__(self):
         return struct.calcsize(self._fmt)
