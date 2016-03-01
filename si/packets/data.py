@@ -23,7 +23,7 @@ class Data(Packet):
         self.data_type = None
         self.byte_length = None
 
-        self._fmt += "iHi"
+        self.fmt += "iHi"
 
 
 class Status(Data):
@@ -32,10 +32,10 @@ class Status(Data):
 
         self.statuslist = None
 
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data[:16])
+        results = struct.unpack(self.fmt, data[:16])
 
         self.length = results[0]
         self.id = results[1]
@@ -64,11 +64,11 @@ class Done(Data):
         self.func_number = None
 
         # private
-        self._fmt += "H"
-        self.length = struct.calcsize(self._fmt)
+        self.fmt += "H"
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data)
+        results = struct.unpack(self.fmt, data)
 
         self.length = results[0]
         self.id = results[1]
@@ -98,10 +98,10 @@ class ImageHeader(Data):
 
         # private
         # self._fmt = self._fmt + "s"
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        result = struct.unpack(self._fmt, data[:16])
+        result = struct.unpack(self.fmt, data[:16])
 
         self.length = result[0]
         self.id = result[1]
@@ -128,13 +128,13 @@ class Sgl2Structure(Data):
     def __init__(self):
         Data.__init__(self)
 
-        self._fmt += 'IBBIIHHiiiiii'
-        self.length = struct.calcsize(self._fmt)
+        self.fmt += 'IBBIIHHiiiiii'
+        self.length = struct.calcsize(self.fmt)
 
         self.sgl2settingslist = None
 
     def fromStruct(self, data):
-        result = struct.unpack(self._fmt, data)
+        result = struct.unpack(self.fmt, data)
 
         self.length = result[0]
         self.id = result[1]
@@ -188,10 +188,10 @@ class CameraParameterStructure(Data):
         Data.__init__(self)
 
         self.parameterlist = None
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data[:16])
+        results = struct.unpack(self.fmt, data[:16])
 
         self.length = results[0]
         self.id = results[1]
@@ -220,11 +220,11 @@ class AcquisitionStatus(Data):
         self.acquiring = None
 
         # private
-        self._fmt += "HHIi"
-        self.length = struct.calcsize(self._fmt)
+        self.fmt += "HHIi"
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data)
+        results = struct.unpack(self.fmt, data)
 
         self.length = results[0]
         self.id = results[1]
@@ -255,10 +255,10 @@ class XMLFileStructure(Data):
     def __init__(self):
         Data.__init__(self)
 
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        result = struct.unpack(self._fmt, data[:16])
+        result = struct.unpack(self.fmt, data[:16])
 
         self.length = result[0]
         self.id = result[1]
@@ -284,10 +284,10 @@ class MenuInfoStructure(Data):
         Data.__init__(self)
 
         self.menuinfolist = None
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        result = struct.unpack(self._fmt, data[:16])
+        result = struct.unpack(self.fmt, data[:16])
 
         self.length = result[0]
         self.id = result[1]

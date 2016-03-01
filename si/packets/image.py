@@ -31,11 +31,11 @@ class Image(Packet):
         self.offset = None
         self.img_bytes = None
 
-        self._fmt = self._fmt + "iHHHHiiiI"
-        self.length = struct.calcsize(self._fmt)
+        self.fmt = self.fmt + "iHHHHiiiI"
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
-        results = struct.unpack(self._fmt, data)
+        results = struct.unpack(self.fmt, data)
 
         self.length = results[0]
         self.id = results[1]
@@ -54,7 +54,7 @@ class Image(Packet):
         return True
 
     def __len__(self):
-        return struct.calcsize(self._fmt)
+        return struct.calcsize(self.fmt)
 
     def __str__(self):
         return "<image packet>\nlength=%d\ncam_id=%d\nerr_code=%d\nimg_id=%d\nimg_type=%d\nserial_length=%d\n" \

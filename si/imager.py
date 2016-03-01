@@ -2,6 +2,7 @@ import glob
 import os
 import numpy
 import logging
+import time
 
 from astropy.io import fits as pyfits
 

@@ -22,12 +22,12 @@ class Ack (Packet):
         self.accept = None
 
         # private
-        self._fmt = self._fmt + "H"
-        self.length = struct.calcsize(self._fmt)
+        self.fmt = self.fmt + "H"
+        self.length = struct.calcsize(self.fmt)
 
     def fromStruct(self, data):
 
-        result = struct.unpack(self._fmt, data)
+        result = struct.unpack(self.fmt, data)
 
         self.length = result[0]
         self.id = result[1]

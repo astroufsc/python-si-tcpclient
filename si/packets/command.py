@@ -47,9 +47,9 @@ class Command(Packet):
         self.params = []
         self.param_length = 0
 
-        self._fmt += "HH"
+        self.fmt += "HH"
 
-        self.length = struct.calcsize(self._fmt)
+        self.length = struct.calcsize(self.fmt)
 
     def addParam(self, fmt, value):
         param = Param(fmt, value)
@@ -59,10 +59,10 @@ class Command(Packet):
 
     def toStruct(self):
 
-        cmd = struct.pack(self._fmt, self.length + self.param_length, self.id,
+        cmd = struct.pack(self.fmt, self.length + self.param_length, self.id,
                           self.cam_id, self.func_number, self.param_length)
 
-        lfmt = self._fmt
+        lfmt = self.fmt
         for param in self.params:
             lfmt += param.fmt[1:]
             cmd = cmd + struct.pack(param.fmt, param.value)
