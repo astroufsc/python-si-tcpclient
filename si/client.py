@@ -46,7 +46,7 @@ class AckException(Exception):
 class ExposureException(Exception):
     pass
 
-class SIClient (threading.Thread):
+class SIClient (object):
 
     """SIClient.
 
@@ -55,9 +55,9 @@ class SIClient (threading.Thread):
     """
 
     def __init__(self, host, port):
-        threading.Thread.__init__(self)
-
-        self.setDaemon(True)
+        # threading.Thread.__init__(self)
+        #
+        # self.setDaemon(True)
 
         self.host = host
         self.port = port
@@ -71,7 +71,10 @@ class SIClient (threading.Thread):
         self._cmdQueue = Queue()
         self._cmdid = 0
         self._cmdlist = {}
+
         self._abortExposure = threading.Event()
+
+        self.socketLock = threading.Lock()
 
         self.exposeComplete = threading.Condition()
 
@@ -91,33 +94,33 @@ class SIClient (threading.Thread):
 
         self.sk.close()
 
-    def run(self):
-
-        while True:
-            time.sleep(.1)
-            log.debug('Checking if queue is empty')
-            if not self._cmdQueue.empty():
-                log.debug('queue has items. Processing...')
-                cmdid = self._cmdid + 1
-                self._cmdlist[cmdid] = self._cmdQueue.get()
-                try:
-                    self._cmdlist[cmdid].condition.acquire()
-                    if isinstance(self._cmdlist[cmdid].cmd , SetExposureTimeAndAcquire):
-                        log.debug("This is a Set and Acquire command!")
-                        cmdresult = self._executeAcquire(self._cmdlist[cmdid].cmd)
-                    else:
-                        cmdresult = self._executeCommand(self._cmdlist[cmdid].cmd,self._cmdlist[cmdid].noack)
-                    self._cmdlist[cmdid].value = cmdresult
-                    self._cmdlist[cmdid].ok = True
-                    self._cmdlist[cmdid].condition.notify()
-                    self._cmdlist[cmdid].condition.release()
-                except Exception, e:
-                    self._cmdlist[cmdid].ok = False
-                    self._cmdlist[cmdid].exception = sys.exc_info()
-                    self._cmdlist[cmdid].msg = e
-                    self._cmdlist[cmdid].condition.notify()
-                    self._cmdlist[cmdid].condition.release()
-                    pass
+    # def run(self):
+    #
+    #     while True:
+    #         time.sleep(.1)
+    #         log.debug('Checking if queue is empty')
+    #         if not self._cmdQueue.empty():
+    #             log.debug('queue has items. Processing...')
+    #             cmdid = self._cmdid + 1
+    #             self._cmdlist[cmdid] = self._cmdQueue.get()
+    #             try:
+    #                 self._cmdlist[cmdid].condition.acquire()
+    #                 if isinstance(self._cmdlist[cmdid].cmd , SetExposureTimeAndAcquire):
+    #                     log.debug("This is a Set and Acquire command!")
+    #                     cmdresult = self._executeAcquire(self._cmdlist[cmdid].cmd)
+    #                 else:
+    #                     cmdresult = self._executeCommand(self._cmdlist[cmdid].cmd,self._cmdlist[cmdid].noack)
+    #                 self._cmdlist[cmdid].value = cmdresult
+    #                 self._cmdlist[cmdid].ok = True
+    #                 self._cmdlist[cmdid].condition.notify()
+    #                 self._cmdlist[cmdid].condition.release()
+    #             except Exception, e:
+    #                 self._cmdlist[cmdid].ok = False
+    #                 self._cmdlist[cmdid].exception = sys.exc_info()
+    #                 self._cmdlist[cmdid].msg = e
+    #                 self._cmdlist[cmdid].condition.notify()
+    #                 self._cmdlist[cmdid].condition.release()
+    #                 pass
 
 
     def recv(self, n):
@@ -170,25 +173,25 @@ class SIClient (threading.Thread):
 
         return ret
 
-    def executeCommand(self,cmd, noAck=False):
+    # def executeCommand(self,cmd, noAck=False):
+    #
+    #     # Generate
+    #     exec_cmd = CmdRes()
+    #     exec_cmd.cmd = cmd
+    #     exec_cmd.noack = noAck
+    #
+    #     # Queue
+    #     exec_cmd.condition.acquire()
+    #     self._cmdQueue.put(exec_cmd)
+    #     exec_cmd.condition.wait()
+    #     exec_cmd.condition.release()
+    #
+    #     if exec_cmd.ok:
+    #         return exec_cmd.value
+    #     else:
+    #         raise exec_cmd.exception[0],exec_cmd.exception[1],exec_cmd.exception[2]
 
-        # Generate
-        exec_cmd = CmdRes()
-        exec_cmd.cmd = cmd
-        exec_cmd.noack = noAck
-
-        # Queue
-        exec_cmd.condition.acquire()
-        self._cmdQueue.put(exec_cmd)
-        exec_cmd.condition.wait()
-        exec_cmd.condition.release()
-
-        if exec_cmd.ok:
-            return exec_cmd.value
-        else:
-            raise exec_cmd.exception[0],exec_cmd.exception[1],exec_cmd.exception[2]
-
-    def _executeCommand(self, cmd, noAck=False):
+    def executeCommand(self, cmd, noAck=False):
         """
         Execute a CameraCommand command.
 
@@ -198,129 +201,154 @@ class SIClient (threading.Thread):
         Data or Image packets.
         """
 
+        self.socketLock.acquire()
+
         if not self.sk:
             try:
                 self.connect()
             except socket.error, e:
+                self.socketLock.release()
                 raise e
 
         cmd_to_send = cmd.command()
-        log.debug("cmd is: {}".format(cmd_to_send))
+        # log.debug("cmd is: {}".format(cmd_to_send))
 
         bytes_sent = self.sk.send(cmd_to_send.toStruct())
-        log.debug("%d bytes sent" % bytes_sent)
+        # log.debug("%d bytes sent" % bytes_sent)
 
-        while True:
+        try:
+            while True:
 
-            ret = select.select([self.sk], [], [])
+                ret = select.select([self.sk], [], [])
 
-            if not ret[0]:
-                break
-
-            if ret[0][0] == self.sk:
-
-                header = Packet()
-                header_data = self.recv(len(header))
-                header.fromStruct(header_data)
-
-                if header.id == 129:
-                    ack = Ack()
-                    ack.fromStruct(
-                        header_data + self.recv(header.length - len(header)))
-                    log.debug(ack)
-                    # TODO: Figure out why do I need this sleep here. If Idon't do this, some commands are not
-                    # TODO: performed. I really don't know why!
-                    time.sleep(0.1)
-                    # return ack
-                    if not ack.accept:
-                        raise AckException(
-                            "Camera did not accepted command...")
-
-                if header.id == 131:  # incoming data pkt
-                    data = cmd.result()  # data structure as defined in data.py
-                    data.fromStruct(
-                        header_data + self.recv(header.length - len(header)))
-                    #data.fromStruct (header_data + self.recv (header.length))
-                    # log.debug(data)
-                    log.debug("data type is {}".format(data.data_type))
-                    if data.data_type == 2006:  # image header
-                        return data.header
-                    elif data.data_type == 2004:  # acquisition status structure
-                        return data
-                    elif data.data_type == 2007:  # command done structure
-                        return data
-                    elif data.data_type == 2008:  # SGLII settings structure
-                        return data
-                    elif data.data_type == 2010:  # camera parameter structure
-                        return data
-                    elif data.data_type == 2011:  # camera XML file structure
-                        return data
-                    elif data.data_type == 2012:  # camera status structure
-                        return data
-                    elif data.data_type == 2013:  # menu information structure
-                        # print(data.data_type)
-                        return data
+                if not ret[0]:
                     break
 
-                if header.id == 132:
+                if ret[0][0] == self.sk:
 
-                    #tmp_array = np.array([])
+                    header = Packet()
+                    header_data = self.recv(len(header))
+                    header.fromStruct(header_data)
 
-                    img = cmd.result()
-                    img.fromStruct(
-                        header_data + self.recv(len(img) - len(header)))
+                    if header.id == 129:
+                        ack = Ack()
+                        ack.fromStruct(
+                            header_data + self.recv(header.length - len(header)))
+                        # log.debug(ack)
+                        # TODO: Figure out why do I need this sleep here. If Idon't do this, some commands are not
+                        # TODO: performed. I really don't know why!
+                        time.sleep(0.1)
+                        # return ack
+                        if not ack.accept:
+                            self.socketLock.release()
+                            raise AckException(
+                                "Camera did not accepted command...")
 
-                    # TODO: Needs better mapping of types here!
-                    tmp_array = np.fromstring(
-                        self.recv(img.img_bytes), np.uint16)
-                    log.debug(img)
+                    if header.id == 131:  # incoming data pkt
 
-                    packets = img.total_packets - 1
+                        data = cmd.result()  # data structure as defined in data.py
+                        data.fromStruct(
+                            header_data + self.recv(header.length - len(header)))
+                        #data.fromStruct (header_data + self.recv (header.length))
+                        # log.debug(data)
+                        # log.debug("data type is {}".format(data.data_type))
+                        if data.data_type == 2006:  # image header
+                            return data.header
+                        elif data.data_type == 2004:  # acquisition status structure
+                            return data
+                        elif data.data_type == 2007:  # command done structure
+                            return data
+                        elif data.data_type == 2008:  # SGLII settings structure
+                            return data
+                        elif data.data_type == 2010:  # camera parameter structure
+                            return data
+                        elif data.data_type == 2011:  # camera XML file structure
+                            return data
+                        elif data.data_type == 2012:  # camera status structure
+                            return data
+                        elif data.data_type == 2013:  # menu information structure
+                            # print(data.data_type)
+                            return data
+                        break
 
-                    for i in range(packets):
+                    if header.id == 132:
 
-                        data = self.recv(len(img))
-                        img.fromStruct(data)
-                        log.debug (img)
-                        data = self.recv(img.img_bytes)
-                        tmp_array = np.append(
-                            tmp_array, np.fromstring(data, np.uint16))
+                        #tmp_array = np.array([])
 
-                    return (img.serial_length, img.parallel_length, tmp_array)
+                        img = cmd.result()
+                        img.fromStruct(
+                            header_data + self.recv(len(img) - len(header)))
 
-    def _executeAcquire(self, cmd):
+                        # TODO: Needs better mapping of types here!
+                        tmp_array = np.fromstring(
+                            self.recv(img.img_bytes), np.uint16)
+                        log.debug(img)
+
+                        packets = img.total_packets - 1
+
+                        for i in range(packets):
+
+                            data = self.recv(len(img))
+                            img.fromStruct(data)
+                            log.debug (img)
+                            data = self.recv(img.img_bytes)
+                            tmp_array = np.append(
+                                tmp_array, np.fromstring(data, np.uint16))
+
+                        return (img.serial_length, img.parallel_length, tmp_array)
+        except:
+            raise
+        finally:
+            self.socketLock.release()
+
+    def executeAcquire(self, cmd):
 
         self._abortExposure.clear()
         self.exposeComplete.acquire()
 
         def waitdonepacket():
-            ret = select.select([self.sk], [], [])
+            self.socketLock.acquire()
 
-            if ret[0] is None:
-                raise ExposureException("Could not get done package for this exposure.")
-            elif ret[0][0] == self.sk:
-                header = Packet()
-                header_data = self.recv(len(header))
-                header.fromStruct(header_data)
+            try:
+                ret = select.select([self.sk], [], [])
 
-                if header.id == 131:  # incoming data pkt
-                    rdata = cmd.result()  # data structure as defined in data.py
-                    rdata.fromStruct(
-                        header_data + self.recv(header.length - len(header)))
-                    #data.fromStruct (header_data + self.recv (header.length))
-                    # logging.debug(data)
-                    log.debug("data type is {}".format(rdata.data_type))
-                    return rdata
+                if ret[0] is None:
+                    raise ExposureException("Could not get done package for this exposure.")
+                elif ret[0][0] == self.sk:
+                    header = Packet()
+                    header_data = self.recv(len(header))
+                    header.fromStruct(header_data)
+
+                    if header.id == 131:  # incoming data pkt
+                        rdata = cmd.result()  # data structure as defined in data.py
+                        rdata.fromStruct(
+                            header_data + self.recv(header.length - len(header)))
+                        #data.fromStruct (header_data + self.recv (header.length))
+                        # logging.debug(data)
+                        # log.debug("data type is {}".format(rdata.data_type))
+                        return rdata
+            except:
+                raise
+            finally:
+                self.socketLock.release()
+
         def waitexposure():
-            while self._executeCommand(InquireAcquisitionStatus()).exp_done_percent < 100:
+            while self.executeCommand(InquireAcquisitionStatus()).exp_done_percent < 100:
                 time.sleep(0.1)
                 if time.time() - exp_stated > cmd.exp_time+self.timeout:
                     raise ExposureException("Exposure exceeded expected time.")
             log.debug("Exposure done. Readout starting.")
 
+        def waitreadout():
+            while self.executeCommand(InquireAcquisitionStatus()).readout_done_percent < 95:
+                time.sleep(0.1)
+                # if time.time() - exp_stated > cmd.exp_time+self.readuout_timeout:
+                #     raise ExposureException("Exposure exceeded expected time.")
+            log.debug("Exposure done. Readout starting.")
+
         # First run the set exposure time, as usual
         cmd_set = SetExposureTime(cmd.exp_time)
-        self._executeCommand(cmd_set)
+        self.executeCommand(cmd_set)
 
         # Now run the acquire command with no blocking...
         if not self.sk:
@@ -330,30 +358,37 @@ class SIClient (threading.Thread):
                 raise e
 
         cmd_to_send = cmd.acq_command()
-        log.debug("cmd is: {}".format(cmd_to_send))
+        # log.debug("cmd is: {}".format(cmd_to_send))
 
         # send Acquire command
-        bytes_sent = self.sk.send(cmd_to_send.toStruct())
+        self.socketLock.acquire()
+        try:
+            bytes_sent = self.sk.send(cmd_to_send.toStruct())
 
-        # check acknowledge
-        ret = select.select([self.sk], [], [])
-        if not ret[0]:
-            raise AckException('No answer from camera')
+            # check acknowledge
+            ret = select.select([self.sk], [], [])
 
-        if ret[0][0] == self.sk:
+            if not ret[0]:
+                raise AckException('No answer from camera')
 
-            header = Packet()
-            header_data = self.recv(len(header))
-            header.fromStruct(header_data)
+            if ret[0][0] == self.sk:
 
-            if header.id == 129:
-                ack = Ack()
-                ack.fromStruct(header_data + self.recv(header.length - len(header)))
+                header = Packet()
+                header_data = self.recv(len(header))
+                header.fromStruct(header_data)
 
-                if not ack.accept:
-                    raise AckException("Camera did not accepted command...")
-            else:
-                raise AckException("No acknowledge received from camera...")
+                if header.id == 129:
+                    ack = Ack()
+                    ack.fromStruct(header_data + self.recv(header.length - len(header)))
+
+                    if not ack.accept:
+                        raise AckException("Camera did not accepted command...")
+                else:
+                    raise AckException("No acknowledge received from camera...")
+        except:
+            raise
+        finally:
+            self.socketLock.release()
 
         exp_stated = time.time()
         # if exposure time is less than 10s just block and wait
@@ -364,6 +399,7 @@ class SIClient (threading.Thread):
             self.exposeComplete.notify()
             self.exposeComplete.release()
 
+            waitreadout()
             return waitdonepacket()
         else:
             while (time.time() - exp_stated) < cmd.exp_time-10.:
@@ -375,7 +411,7 @@ class SIClient (threading.Thread):
             waitexposure()
             self.exposeComplete.notify()
             self.exposeComplete.release()
-
+            waitreadout()
             return waitdonepacket()
 
     def abort(self):
