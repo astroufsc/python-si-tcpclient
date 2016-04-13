@@ -158,6 +158,31 @@ class Acquire(CameraCommand):
     def result(self):
         return si.packets.Done()
 
+class SetExposureTimeAndAcquire(CameraCommand):
+    def __init__(self, exp_time):
+        CameraCommand.__init__(self)
+
+        self.exp_time = float(exp_time)
+
+    def set_command(self):
+        cmd = si.packets.Command()
+        cmd.func_number = 1035
+
+        # exposure time as a double in seconds
+        cmd.addParam(">d", float(self.exp_time))
+
+        return cmd
+
+    def acq_command(self):
+        cmd = si.packets.Command()
+        cmd.func_number = 1037
+
+        return cmd
+
+    def result(self):
+        return si.packets.Done()
+
+
 
 class SetMultipleFrameBufferMode(CameraCommand):
     def __init__(self, mode):
