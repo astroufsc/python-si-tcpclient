@@ -1,5 +1,6 @@
 # pH @ LNA 06/04/2007
 
+import binascii
 import struct
 import copy
 
@@ -70,6 +71,7 @@ class Done(Data):
     def fromStruct(self, data):
         results = struct.unpack(self.fmt, data)
 
+        self.data = data
         self.length = results[0]
         self.id = results[1]
         self.cam_id = results[2]
@@ -85,7 +87,8 @@ class Done(Data):
         return self.length
 
     def __str__(self):
-        return "<done packet>\nlength=%d\nerr_code=%d\nfunc_number=%d\n" % (
+
+        return "<done packet>\npayload=%s\nlength=%d\nerr_code=%d\nfunc_number=%d\n" % (binascii.hexlify(self.data),
             len(self), self.err_code, self.func_number)
 
 

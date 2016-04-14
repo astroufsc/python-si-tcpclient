@@ -1,7 +1,7 @@
 # -*- encoding: iso-8859-1 -*-
 
 # pH @ LNA 06/04/2007
-
+import binascii
 import struct
 
 from si.packet import Packet
@@ -29,6 +29,7 @@ class Ack (Packet):
 
         result = struct.unpack(self.fmt, data)
 
+        self.data = data
         self.length = result[0]
         self.id = result[1]
         self.cam_id = result[2]
@@ -37,7 +38,8 @@ class Ack (Packet):
         return True
 
     def __str__(self):
-        return "<ack packet>\nlength=%d\ncam_id=%d\naccept=%s\n" % (len(self), self.cam_id, bool(self.accept))
+        return "<ack packet>\npayload=%s\nlength=%d\ncam_id=%d\naccept=%s\n" % (binascii.hexlify(self.data),
+            len(self), self.cam_id, bool(self.accept))
 
     def __len__(self):
         return self.length

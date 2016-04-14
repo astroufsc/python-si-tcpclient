@@ -77,6 +77,7 @@ class SIClient (object):
         self.socketLock = threading.Lock()
 
         self.exposeComplete = threading.Condition()
+        self.readoutComplete = threading.Condition()
 
     def connect(self):
 
@@ -308,6 +309,7 @@ class SIClient (object):
 
         def waitdonepacket():
             self.socketLock.acquire()
+            log.debug("Waiting for done packet")
 
             try:
                 ret = select.select([self.sk], [], [])
@@ -324,27 +326,28 @@ class SIClient (object):
                         rdata.fromStruct(
                             header_data + self.recv(header.length - len(header)))
                         #data.fromStruct (header_data + self.recv (header.length))
-                        # logging.debug(data)
+                        logging.debug(rdata)
                         # log.debug("data type is {}".format(rdata.data_type))
                         return rdata
             except:
                 raise
             finally:
+                log.debug("Packet received")
                 self.socketLock.release()
 
         def waitexposure():
             while self.executeCommand(InquireAcquisitionStatus()).exp_done_percent < 100:
-                time.sleep(0.1)
+                # time.sleep(0.1)
                 if time.time() - exp_stated > cmd.exp_time+self.timeout:
                     raise ExposureException("Exposure exceeded expected time.")
-            log.debug("Exposure done. Readout starting.")
+            log.debug("Exposure complete. Readout starting.")
 
         def waitreadout():
             while self.executeCommand(InquireAcquisitionStatus()).readout_done_percent < 95:
                 time.sleep(0.1)
                 # if time.time() - exp_stated > cmd.exp_time+self.readuout_timeout:
                 #     raise ExposureException("Exposure exceeded expected time.")
-            log.debug("Exposure done. Readout starting.")
+            log.debug("Readout complete.")
 
         # First run the set exposure time, as usual
         cmd_set = SetExposureTime(cmd.exp_time)
@@ -358,7 +361,7 @@ class SIClient (object):
                 raise e
 
         cmd_to_send = cmd.acq_command()
-        # log.debug("cmd is: {}".format(cmd_to_send))
+        log.debug("cmd is: {}".format(cmd_to_send))
 
         # send Acquire command
         self.socketLock.acquire()
@@ -380,7 +383,7 @@ class SIClient (object):
                 if header.id == 129:
                     ack = Ack()
                     ack.fromStruct(header_data + self.recv(header.length - len(header)))
-
+                    log.debug(ack)
                     if not ack.accept:
                         raise AckException("Camera did not accepted command...")
                 else:

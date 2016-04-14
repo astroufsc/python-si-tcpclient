@@ -2,6 +2,7 @@
 
 # pH @ LNA 06/04/2007
 
+import binascii
 import struct
 
 from si.packet import Packet
@@ -73,8 +74,8 @@ class Command(Packet):
         return self.length + self.param_length
 
     def __str__(self):
-        s = "<command packet>\nlength=%d\ncam_id=%d\nfunc_number=%d" \
-            "\nparam_length=%d\n" % (
+        s = "<command packet>\npayload=%s\nlength=%d\ncam_id=%d\nfunc_number=%d" \
+            "\nparam_length=%d\n" % (binascii.hexlify(self.toStruct()),
             len(self), self.cam_id, self.func_number, self.param_length)
 
         for i, param in enumerate(self.params):
